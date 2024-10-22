@@ -32,15 +32,36 @@ router.post('/:rol_id', (req, res) => {
 // Buscar Usuario
 // http://localhost:8888/usuario/verificar
 router.post('/verificar/:email/:password', async (req,res) => {
-    const email= req.params.email;
+    const mail= req.params.email;
     const password = req.params.password;
-    const passwordHash = await user.findOne({email},{__v:false});
+    const passwordHash = await user.aggregate([
+        {
+            $match: { email: mail }
+        },
+        {
+            $lookup:{
+                from:'roles',
+                localField:"rol_id",
+                foreignField:"_id",
+                as:"rol"
+            }
+        },
+        {
+            $project: {
+                _id:1,
+                nombre:1,
+                email:1,
+                password:1,
+                rol:{$arrayElemAt: [ "$rol.nombre", 0 ] },  
+                rol_id: { $arrayElemAt: [ "$rol._id", 0 ] }
+            }
+        }
+    ]);
     if(passwordHash){
-        let compare = await bcrypt.compare( password , passwordHash.password);
+        let compare = await bcrypt.compare( password , passwordHash[0].password);
         if(compare){
-        console.log(passwordHash);
         const tokenSession = await tokenSign(passwordHash);
-        res.send({usuario:passwordHash, token: tokenSession});
+        res.send({usuario:passwordHash[0], token: tokenSession});
         res.end();    
         }else{
             res.send([]);
