@@ -10,6 +10,7 @@ var categoriaRouter = require('./routers/categorias.routers');
 var rolRouter = require('./routers/roles.routers');
 var productosRouter = require('./routers/productos.router')
 var usuarioRouter = require('./routers/usuarios.router')
+var ordenRouter = require('./routers/ordenes.router')
 
 //rutas principales
 app.use(cors());
@@ -20,6 +21,7 @@ app.use('/categorias', categoriaRouter);
 app.use('/roles', rolRouter);
 app.use('/productos', productosRouter);
 app.use('/usuarios', usuarioRouter);
+app.use('/orden',ordenRouter)
 
 
 
