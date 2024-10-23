@@ -9,7 +9,8 @@ const schema = new mongoose.Schema({
     descripcion: String,
     imagen: String,
     fecha_creacion: Date,
-    stock: Number
+    stock: Number,
+    activo: Boolean,
 });
 
 module.exports = mongoose.model('productos', schema);

@@ -11,6 +11,11 @@ const upload = multer({ dest: 'uploads/' });
 router.get('/', (req,res) => {
     producto.aggregate([
         {
+            $match: {
+                activo: true
+            }
+        },
+        {
            $lookup: {
               from: "categorias",             
               localField: "categoria_id",     
@@ -33,7 +38,8 @@ router.get('/', (req,res) => {
               fecha_creacion:1,
               stock:1,                 
               nombre_categoria: { $arrayElemAt: [ "$categoria.nombre", 0 ] },  
-              id_categoria: { $arrayElemAt: [ "$categoria._id", 0 ] }          
+              id_categoria: { $arrayElemAt: [ "$categoria._id", 0 ] },
+              activo: 1         
            }
         }
      ])     
@@ -81,23 +87,72 @@ router.get('/unico/:id', (req,res) => {
 // Agregar Producto
 // http://localhost:8888/producto/:categoria_id
 router.post('/:categoria_id', upload.single('imagen'), (req, res) => {
-    const prod = new producto({
-      nombre: req.body.nombre,
-      categoria_id: new mongoose.Types.ObjectId(req.params.categoria_id),
-      precio: req.body.precio,
-      descripcion: req.body.descripcion,
-      imagen: req.file ? `http://localhost:8888/uploads/${req.file.filename}` : null, // Nombre del archivo guardado
-      fecha_creacion: Date.now(),
-      stock: req.body.stock,
-    });
-  
-    prod.save().then(resp =>{
-      res.send(resp);
-      res.end();
-    }).catch(error=>{
-      res.send(error);
-      res.end();
-    });
+    const prodData = {
+        nombre: req.body.nombre,
+        categoria_id: new mongoose.Types.ObjectId(req.params.categoria_id),
+        precio: req.body.precio,
+        descripcion: req.body.descripcion,
+        fecha_creacion: Date.now(),
+        stock: req.body.stock,
+        activo: true
+    };
+    
+    if (req.file) {
+        prodData.imagen = `http://localhost:8888/uploads/${req.file.filename}`; // Nombre del archivo guardado
+    }
+    
+    if (req.body.id) {
+        const updateFields = { $set: prodData };
+        
+        if (!req.file) {
+            delete updateFields.$set.imagen;
+        }
+
+        producto.findOneAndUpdate(
+            {
+                _id: new mongoose.Types.ObjectId(req.body.id)
+            },
+            updateFields,
+            { new: true } 
+        ).then(updatedProd => {
+            if (updatedProd) {
+                res.send(updatedProd);
+            } else {
+                res.status(404).send({ message: "Producto no encontrado" });
+            }
+        }).catch(error => {
+            res.status(500).send(error);
+        });
+    } else {
+        // Si no hay ID, se crea un nuevo producto
+        const prod = new producto(prodData);
+        prod.save().then(resp => {
+            res.send(resp);
+        }).catch(error => {
+            res.status(500).send(error);
+        });
+    }
   });
+
+  router.delete('/eliminarProducto/:id', async (req,res) => {
+    try {
+        var response = await producto.findOneAndUpdate({
+            _id: new mongoose.Types.ObjectId(req.params.id)
+        },
+        {
+            $set: {
+                "activo": false,
+            }
+        }
+        )
+        
+        res.status(200).send(response);
+    } catch(error) {
+        res.status(500).send({
+            error: true,
+            message: "Error al eliminar el producto"
+        });
+    }
+});
 
 module.exports = router;
